@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,10 +11,22 @@ namespace Image_HE_DHE_AHE_CLAHE
 {
     class ImageBase
     {
+        /*
+         ImageBase类
+        存放用到的图像处理方法
+        IsGray、IsRGB判断颜色空间
+        GetHist获取直方图
+        HE直方图均衡化
+        DHE动态直方图均衡化
+        OnlyClone复制图像
+        AHE自适应直方图均衡化
+        CLHE限制对比度的直方图均衡化
+        CLAHE限制对比度的自适应直方图均衡化
+         */
         //判断图像颜色空间
         public bool IsGRAY(Bitmap bitmap)
         {
-            int flags = bitmap.Flags;
+            int flags = bitmap.Flags;//图像的Flags属性
             if ((flags & 64) == 64)//Gray空间为含64
             {
                 return true;
@@ -26,7 +38,7 @@ namespace Image_HE_DHE_AHE_CLAHE
         }
         public bool IsRGB(Bitmap bitmap)
         {
-            int flags = bitmap.Flags;
+            int flags = bitmap.Flags;//图像的Flags属性
             if ((flags & 16) == 16)//RGB空间为含16
             {
                 return true;
@@ -39,30 +51,30 @@ namespace Image_HE_DHE_AHE_CLAHE
         //获取直方图
         public int[,] GetHist(Bitmap bitmap)
         {
-            int width = bitmap.Width;
-            int heigth = bitmap.Height;
-            if (IsGRAY(bitmap))//Gary空间
+            int width = bitmap.Width;//宽度
+            int heigth = bitmap.Height;//高度
+            if (IsGRAY(bitmap))//Gray空间
             {
-                int[,] hist = new int[256, 1];
+                int[,] hist = new int[256, 1];//存放直方图
                 for (int j = 0; j < heigth; j++)
                     for (int i = 0; i < width; i++)
                     {
-                        int grey = bitmap.GetPixel(i, j).R;
-                        hist[grey, 0]++;
+                        int grey = bitmap.GetPixel(i, j).R;//读取灰度值
+                        hist[grey, 0]++;//对应项+1
                     }
                 return hist;
             }
             else//依照RGB空间处理
             {
-                int[,] hist = new int[256, 3];
+                int[,] hist = new int[256, 3];//存放直方图
                 for (int j = 0; j < heigth; j++)
                     for (int i = 0; i < width; i++)
                     {
-                        uint[] grey = new uint[3];
-                        grey[0] = bitmap.GetPixel(i, j).R;
+                        uint[] grey = new uint[3];//存放直方图，0-2RGB
+                        grey[0] = bitmap.GetPixel(i, j).R;//读取灰度值
                         grey[1] = bitmap.GetPixel(i, j).G;
                         grey[2] = bitmap.GetPixel(i, j).B;
-                        hist[grey[0], 0]++;
+                        hist[grey[0], 0]++;//对应项+1
                         hist[grey[1], 1]++;
                         hist[grey[2], 2]++;
                     }
@@ -72,14 +84,14 @@ namespace Image_HE_DHE_AHE_CLAHE
         //HE
         public Bitmap HE(Bitmap bitmap)
         {
-            int width = bitmap.Width;
-            int heigth = bitmap.Height;
-            Rectangle rectangle = new Rectangle(0, 0, width, heigth);
-            PixelFormat pixelFormat = bitmap.PixelFormat;
+            int width = bitmap.Width;//宽度
+            int heigth = bitmap.Height;//高度
+            Rectangle rectangle = new Rectangle(0, 0, width, heigth);//矩形框
+            PixelFormat pixelFormat = bitmap.PixelFormat;//像素格式
             Bitmap bitmap1 = bitmap.Clone(rectangle,pixelFormat);//Clone图片
-            if (IsGRAY(bitmap))
+            if (IsGRAY(bitmap))//Gray空间
             {
-                int grey;
+                int grey;//灰度
                 Color color = new Color();
                 int[,] hist = GetHist(bitmap);
                 int[,] outhist= new int[256, 1];//用于映射的灰度表
@@ -95,38 +107,48 @@ namespace Image_HE_DHE_AHE_CLAHE
                 for (int j = 0; j < heigth; j++)
                     for (int i = 0; i < width; i++)
                     {
-                        grey = bitmap.GetPixel(i, j).R;
-                        color = Color.FromArgb(outhist[grey,0], outhist[grey, 0], outhist[grey, 0]);
-                        bitmap1.SetPixel(i, j, color);
+                        grey = bitmap.GetPixel(i, j).R;//读映射表
+                        color = Color.FromArgb(outhist[grey,0], outhist[grey, 0], outhist[grey, 0]);//获得颜色
+                        bitmap1.SetPixel(i, j, color);//设置像素
                     }
             }
             else
             {
-                int r, g, b;
+                int r, g, b;//RGB
                 Color color = new Color();
-                int[,] hist = GetHist(bitmap);
-                int[,] outhist = new int[256, 3];
-                double[,] middlehist = new double[256, 3];
+                int[,] hist = GetHist(bitmap);//获取直方图
+                int[,] outhist = new int[256, 3];//输出直方图
+                double[,] middlehist = new double[256, 3];//中间处理
                 double p = (double)255 / (width * heigth);
                 for (int i = 1; i < 256; i++)
                     for (int j = 0; j < 3; j++)
-                        middlehist[i, j] = middlehist[i - 1, j] + hist[i, j];
+                        middlehist[i, j] = middlehist[i - 1, j] + hist[i, j];//累加
                 for (int i = 0; i < 256; i++)
                     for (int j = 0; j < 3; j++)
                     {
                         middlehist[i, j] = middlehist[i, j] * p;
-                        outhist[i, j] = (int)middlehist[i, j];
+                        outhist[i, j] = (int)middlehist[i, j];//建立映射表
                     }
                 for (int j = 0; j < heigth; j++)
                     for (int i = 0; i < width; i++)
                     {
-                        r = bitmap.GetPixel(i, j).R;
+                        r = bitmap.GetPixel(i, j).R;//读表
                         g = bitmap.GetPixel(i, j).G;
                         b = bitmap.GetPixel(i, j).B;
-                        color = Color.FromArgb(outhist[r,0],outhist[g,1],outhist[b,2]);
-                        bitmap1.SetPixel(i, j, color);
+                        color = Color.FromArgb(outhist[r,0],outhist[g,1],outhist[b,2]);//获得颜色
+                        bitmap1.SetPixel(i, j, color);//设置像素
                     }
             }
+            return bitmap1;
+        }
+        //OnlyClone
+        public Bitmap OnlyClone(Bitmap bitmap)
+        {
+            int width = bitmap.Width;
+            int heigth = bitmap.Height;
+            Rectangle rectangle = new Rectangle(0, 0, width, heigth);
+            PixelFormat pixelFormat = bitmap.PixelFormat;
+            Bitmap bitmap1 = bitmap.Clone(rectangle, pixelFormat);
             return bitmap1;
         }
         //DHE
@@ -137,16 +159,7 @@ namespace Image_HE_DHE_AHE_CLAHE
             Rectangle rectangle = new Rectangle(0, 0, width, heigth);
             PixelFormat pixelFormat = bitmap.PixelFormat;
             Bitmap bitmap1 = bitmap.Clone(rectangle, pixelFormat);
-            return bitmap1;
-        }
-        public Bitmap OnlyClone(Bitmap bitmap)
-        {
-            int width = bitmap.Width;
-            int heigth = bitmap.Height;
-            Rectangle rectangle = new Rectangle(0, 0, width, heigth);
-            PixelFormat pixelFormat = bitmap.PixelFormat;
-            Bitmap bitmap1 = bitmap.Clone(rectangle, pixelFormat);
-            if(IsGRAY(bitmap))
+            if (IsGRAY(bitmap))
             {
                 int grey;
                 Color color = new Color();
@@ -155,9 +168,9 @@ namespace Image_HE_DHE_AHE_CLAHE
                 int locp = 0;
                 int[] loc = new int[256];//极小值表
                 loc[0] = 0;
-                for(int i=1;i<255;i++)//寻找极小值
+                for (int i = 1; i < 255; i++)//寻找极小值
                 {
-                    if(hist[i-1,0]>hist[i,0]&&hist[i,0]<hist[i+1,0])
+                    if (hist[i - 1, 0] > hist[i, 0] && hist[i, 0] < hist[i + 1, 0])
                     {
                         locp++;
                         loc[locp] = i;
@@ -165,24 +178,26 @@ namespace Image_HE_DHE_AHE_CLAHE
                 }
                 locp++;
                 loc[locp] = 255;
-                double[,] middlehist = new double[256, locp];//中间表
-                for (int j = 1; j < locp; j++)
-                    for (int i = loc[j-1]; i < loc[j]; i++)
-                        middlehist[i, j] = hist[i, 0];//划分直方图
-                for (int j = 1; j < locp; j++)
-                    for (int i = loc[j - 1] + 1; i < loc[j]; i++)
-                        middlehist[i, j] = middlehist[i, j] + middlehist[i - 1, j];//累计
-                for(int j=1;j<locp;j++)
-                    for(int i=loc[j-1];i<loc[j];i++)
+                locp++;
+                double[,] middlehist = new double[locp, 256];//中间表
+                for (int z = 1; z < locp; z++)
+                    for (int i = loc[z - 1]; i < loc[z]; i++)
+                        middlehist[z, i] = (double)hist[i, 0];//划分直方图
+                for (int z = 1; z < locp; z++)
+                    for (int i = loc[z - 1] + 1; i < loc[z]; i++)
+                        middlehist[z, i] = middlehist[z, i] + middlehist[z, i - 1];//累计
+                for (int z = 1; z < locp; z++)
+                    for (int i = loc[z - 1]; i < loc[z]; i++)
                     {
-                        double p = (loc[j] - loc[j - 1]) / middlehist[loc[j], j];//归一化
-                        middlehist[i, j] = middlehist[i, j] * p + loc[j - 1];//建立映射表
+                        double p = (loc[z - 1] - loc[z]) / middlehist[z, loc[z] - 1];//归一化
+                        middlehist[z, i] = Math.Abs((middlehist[z, i] * p) + loc[z - 1]);//建立映射表
                     }
-                for (int j = 1; j < locp; j++)
+                for (int z = 1; z < locp; z++)
                     for (int i = 0; i < 256; i++)
-                        middlehist[i, j] = middlehist[i, j - 1] + middlehist[i, j];//移动到最后一行
+                        middlehist[z, i] = middlehist[z-1,i] + middlehist[z, i];//移动到最后一行
                 for (int i = 0; i < 256; i++)
-                    outhist[i, 0] = (int)middlehist[i, locp];//最终映射表
+                    outhist[i, 0] = (int)middlehist[locp-1, i];//最终映射表
+                outhist[255, 0] = 255;
                 for (int j = 0; j < heigth; j++)
                     for (int i = 0; i < width; i++)
                     {
@@ -196,15 +211,15 @@ namespace Image_HE_DHE_AHE_CLAHE
                 int r, b, g;
                 Color color = new Color();
                 int[,] hist = GetHist(bitmap);
-                int[,] outhist = new int[256, 30];
+                int[,] outhist = new int[256, 3];
                 for(int k=0;k<3;k++)
                 {
                     int locp = 0;
-                    int[] loc = new int[256];
+                    int[] loc = new int[256];//极小值表
                     loc[0] = 0;
-                    for (int i = 1; i < 255; i++)
+                    for (int i = 1; i < 255; i++)//寻找极小值
                     {
-                        if (hist[i - 1, 0] > hist[i, 0] && hist[i, 0] < hist[i + 1, 0])
+                        if (hist[i - 1, k] > hist[i, k] && hist[i, k] < hist[i + 1, k])
                         {
                             locp++;
                             loc[locp] = i;
@@ -212,24 +227,26 @@ namespace Image_HE_DHE_AHE_CLAHE
                     }
                     locp++;
                     loc[locp] = 255;
-                    double[,] middlehist = new double[256, locp];
-                    for (int j = 1; j < locp; j++)
-                        for (int i = loc[j - 1]; i < loc[j]; i++)
-                            middlehist[i, j] = hist[i, 0];
-                    for (int j = 1; j < locp; j++)
-                        for (int i = loc[j - 1] + 1; i < loc[j]; i++)
-                            middlehist[i, j] = middlehist[i, j] + middlehist[i - 1, j];
-                    for (int j = 1; j < locp; j++)
-                        for (int i = loc[j - 1]; i < loc[j]; i++)
+                    locp++;
+                    double[,] middlehist = new double[locp, 256];//中间表
+                    for (int z = 1; z < locp; z++)
+                        for (int i = loc[z - 1]; i < loc[z]; i++)
+                            middlehist[z, i] = hist[i, k];//划分直方图
+                    for (int z = 1; z < locp; z++)
+                        for (int i = loc[z - 1] + 1; i < loc[z]; i++)
+                            middlehist[z, i] = middlehist[z, i] + middlehist[z, i - 1];//累计
+                    for (int z = 1; z < locp; z++)
+                        for (int i = loc[z - 1]; i < loc[z]; i++)
                         {
-                            double p = (loc[j] - loc[j - 1]) / middlehist[loc[j], j];
-                            middlehist[i, j] = middlehist[i, j] * p + loc[j - 1];
+                            double p = (loc[z - 1] - loc[z]) / middlehist[z, loc[z] - 1];//归一化
+                            middlehist[z, i] = Math.Abs((middlehist[z, i] * p) + loc[z - 1]);//建立映射表
                         }
-                    for (int j = 1; j < locp; j++)
+                    for (int z = 1; z < locp; z++)
                         for (int i = 0; i < 256; i++)
-                            middlehist[i, j] = middlehist[i, j - 1] + middlehist[i, j];
+                            middlehist[z, i] = middlehist[z - 1, i] + middlehist[z, i];//移动到最后一行
                     for (int i = 0; i < 256; i++)
-                        outhist[i, k] = (int)middlehist[i, locp];
+                        outhist[i, k] = (int)middlehist[locp-1, i];//最终映射表
+                    outhist[255, k] = 255;
                 }
                 for (int j = 0; j < heigth; j++)
                     for (int i = 0; i < width; i++)
